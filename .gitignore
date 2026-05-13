@@ -1,0 +1,33 @@
+# StarVPN credentials (contains API keys — never commit)
+starvpn_credentials.json
+
+# Test outputs
+test_results.csv
+screenshots/
+starvpn_isp_test.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# Chrome temp profiles
+starvpn_isp_test_*/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

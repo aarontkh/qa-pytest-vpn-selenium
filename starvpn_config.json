@@ -1,0 +1,369 @@
+{
+    "schedule": [
+        {
+            "country_name": "Belgium",
+            "country": "be",
+            "region": "random",
+            "region_label": "Random",
+            "timeinterval": "sticky"
+        },
+
+        {
+            "country_name": "Canada",
+            "country": "ca",
+            "region": "ab",
+            "region_label": "Alberta",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "Canada",
+            "country": "ca",
+            "region": "bc",
+            "region_label": "British Columbia",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "Canada",
+            "country": "ca",
+            "region": "on",
+            "region_label": "Ontario",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "Canada",
+            "country": "ca",
+            "region": "qc",
+            "region_label": "Quebec",
+            "timeinterval": "sticky"
+        },
+
+        {
+            "country_name": "France",
+            "country": "fr",
+            "region": "ile",
+            "region_label": "Ile-de-France",
+            "timeinterval": "stickybouygues"
+        },
+
+        {
+            "country_name": "Germany",
+            "country": "de",
+            "region": "baden",
+            "region_label": "Baden",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "Germany",
+            "country": "de",
+            "region": "bayern",
+            "region_label": "Bayern",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "Germany",
+            "country": "de",
+            "region": "nordrhein",
+            "region_label": "Nordrhein",
+            "timeinterval": "sticky"
+        },
+
+        {
+            "country_name": "Italy",
+            "country": "it",
+            "region": "random",
+            "region_label": "Random (Telecom Italia)",
+            "timeinterval": "stickytelecomitalia"
+        },
+        {
+            "country_name": "Italy",
+            "country": "it",
+            "region": "random",
+            "region_label": "Random (Vodafone)",
+            "timeinterval": "stickyvodafone"
+        },
+        {
+            "country_name": "Italy",
+            "country": "it",
+            "region": "random",
+            "region_label": "Random (Wind)",
+            "timeinterval": "stickywind"
+        },
+
+        {
+            "country_name": "Netherlands",
+            "country": "nl",
+            "region": "random",
+            "region_label": "Random",
+            "timeinterval": "sticky"
+        },
+
+        {
+            "country_name": "Spain",
+            "country": "es",
+            "region": "random",
+            "region_label": "Random (Digi)",
+            "timeinterval": "stickydigi"
+        },
+        {
+            "country_name": "Spain",
+            "country": "es",
+            "region": "random",
+            "region_label": "Random (Orange)",
+            "timeinterval": "stickyorange"
+        },
+        {
+            "country_name": "Spain",
+            "country": "es",
+            "region": "random",
+            "region_label": "Random (Telefonica)",
+            "timeinterval": "stickytelefonica"
+        },
+        {
+            "country_name": "Spain",
+            "country": "es",
+            "region": "random",
+            "region_label": "Random (Vodafone)",
+            "timeinterval": "stickyvodafone"
+        },
+
+        {
+            "country_name": "United Kingdom",
+            "country": "gb",
+            "region": "sct",
+            "region_label": "Scotland (BT)",
+            "timeinterval": "stickybt"
+        },
+        {
+            "country_name": "United Kingdom",
+            "country": "gb",
+            "region": "sct",
+            "region_label": "Scotland (Virgin)",
+            "timeinterval": "stickyvirgin"
+        },
+        {
+            "country_name": "United Kingdom",
+            "country": "gb",
+            "region": "eng",
+            "region_label": "England (Sky)",
+            "timeinterval": "stickysky"
+        },
+        {
+            "country_name": "United Kingdom",
+            "country": "gb",
+            "region": "eng",
+            "region_label": "England (TalkTalk)",
+            "timeinterval": "stickytalktalk"
+        },
+
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "al",
+            "region_label": "Alabama",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "az",
+            "region_label": "Arizona",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "ca",
+            "region_label": "California",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "co",
+            "region_label": "Colorado",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "dc",
+            "region_label": "District of Columbia",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "fl",
+            "region_label": "Florida",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "ga",
+            "region_label": "Georgia",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "il",
+            "region_label": "Illinois",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "in",
+            "region_label": "Indiana",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "ia",
+            "region_label": "Iowa",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "ks",
+            "region_label": "Kansas",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "la",
+            "region_label": "Louisiana",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "md",
+            "region_label": "Maryland",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "ma",
+            "region_label": "Massachusetts",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "mi",
+            "region_label": "Michigan",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "mn",
+            "region_label": "Minnesota",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "mo",
+            "region_label": "Missouri",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "nv",
+            "region_label": "Nevada",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "nj",
+            "region_label": "New Jersey",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "ny",
+            "region_label": "New York",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "nc",
+            "region_label": "North Carolina",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "oh",
+            "region_label": "Ohio",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "or",
+            "region_label": "Oregon",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "pa",
+            "region_label": "Pennsylvania",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "sc",
+            "region_label": "South Carolina",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "tn",
+            "region_label": "Tennessee",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "tx",
+            "region_label": "Texas",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "va",
+            "region_label": "Virginia",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "wa",
+            "region_label": "Washington",
+            "timeinterval": "sticky"
+        },
+        {
+            "country_name": "United States",
+            "country": "us",
+            "region": "wy",
+            "region_label": "Wyoming",
+            "timeinterval": "sticky"
+        }
+    ]
+}

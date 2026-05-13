@@ -1,0 +1,41 @@
+name: Smoke Tests
+
+# Runs on every push and pull request.
+# Only the smoke tests (no VPN required) run here.
+# Full geo tests must be run locally with StarVPN connected.
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  smoke:
+    name: Smoke tests (no VPN)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Run smoke tests
+        run: pytest tests/test_smoke.py -v --tb=short --junit-xml=results/smoke.xml
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-results
+          path: results/
+          retention-days: 14
