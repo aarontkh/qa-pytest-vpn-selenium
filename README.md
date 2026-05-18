@@ -1,9 +1,56 @@
 # qa_pytest_vpn_selenium
 > *Original script version: [StarVPN-Selenium-ISP-Test-Automation](https://github.com/aarontkh/StarVPN-Selenium-ISP-Test-Automation)*
 
-A pytest-based test automation framework for verifying domain and subdomain availability across multiple geographic locations and ISPs, using StarVPN for IP rotation.
+A pytest-based QA automation framework with two independent test suites:
+
+1. **ISP Geo Test Suite** — verifies domain and subdomain availability across 51 geographic locations and ISPs using StarVPN for IP rotation
+2. **Installer Flow Test Suite** — simulates a real user downloading and installing Browser from campaign lander pages, with passive Windows Defender observation at every step
 
 ---
+
+## Project structure
+
+```
+qa_pytest_vpn_selenium/
+│
+├── core/                          # ISP suite internals
+│   ├── config.py                  # Constants, timeouts, file paths, config loaders
+│   ├── browser.py                 # BrowserFactory + BasePage (Page Object Model root)
+│   ├── vpn.py                     # StarVPNClient + IP info helpers
+│   └── reporting.py               # CSV writing + screenshot helpers
+│
+├── pages/                         # ISP suite page objects
+│   ├── domain_page.py             # Tests whether a marketing domain loads
+│   └── subdomain_page.py          # Tests whether a subdomain redirects correctly
+│
+├── tests/
+│   ├── test_smoke.py              # 30 unit tests — no VPN, no browser, runs in CI
+│   ├── test_isp_combined.py       # ISP geo suite — 51 rounds, one VPN switch per round
+│   └── test_installer_flow.py     # Installer flow suite — standalone, one test per lander URL
+│
+├── conftest.py                    # Fixtures and CLI options for the ISP suite
+├── pytest.ini                     # Pytest configuration
+├── requirements.txt               # Python dependencies
+│
+├── .github/
+│   └── workflows/
+│       └── smoke-tests.yml        # CI: runs smoke tests on every push
+│
+├── starvpn_config.json            # VPN schedule (51 rounds across 9 countries)
+├── starvpn_credentials.json       # StarVPN API credentials — NEVER commit
+├── starvpn_credentials.example.json  # Credentials template (safe to commit)
+│
+├── tested_domains.txt             # Domains tested in every ISP round
+├── tested_dl_subdomains.txt       # Subdomains tested in every ISP round
+├── lander_urls.txt                # Lander URLs for the installer suite (gitignored)
+└── thankyoupage_url.txt           # Expected thank-you page URL (gitignored)
+```
+
+---
+
+---
+
+# Suite 1 — ISP Geo Test Suite
 
 ## How it works
 
@@ -14,108 +61,39 @@ A pytest-based test automation framework for verifying domain and subdomain avai
 │                 │                              └──────────────────────┘
 │  pytest         │  API switches exit location
 │                 │ ──────────────────────────▶  api.starhome.io
-│                 │
 │  Chrome         │  Tests run against target URLs
 │                 │ ──────────────────────────▶  tested_domains.txt
 └─────────────────┘                              tested_dl_subdomains.txt
 ```
 
-StarVPN runs as a **system-wide VPN tunnel**. The framework uses the StarVPN API to change which country/region/ISP the traffic exits from between test rounds. Each round gets a fresh Chrome browser with a clean temporary profile — no shared DNS cache, cookies, or session state.
+StarVPN runs as a system-wide VPN tunnel. The framework calls the StarVPN API between rounds to switch which country/ISP the traffic exits from. Each round uses a fresh Chrome profile with no shared state.
 
-Each VPN schedule entry is a fully independent pytest test case. PyCharm and the terminal show individual results per geo-location:
-
-```
-PASSED  test_domains_load[BE-Random]
-PASSED  test_domains_load[CA-Alberta]
-FAILED  test_domains_load[US-New_York]
-PASSED  test_domains_load[US-North_Carolina]
-```
-
----
-
-## Project structure
+Each of the 51 VPN schedule entries becomes an independent pytest test case:
 
 ```
-qa_pytest_vpn_selenium/
-│
-├── core/                        # Framework internals — don't edit unless extending
-│   ├── config.py                # All constants, timeouts, file paths, config loaders
-│   ├── browser.py               # BrowserFactory + BasePage (Page Object Model root)
-│   ├── vpn.py                   # StarVPNClient + IP info helpers (with retry logic)
-│   └── reporting.py             # CSV writing + screenshot helpers
-│
-├── pages/                       # Page Objects — one per testable surface
-│   ├── domain_page.py           # Tests whether a marketing domain loads
-│   └── subdomain_page.py        # Tests whether a subdomain redirects correctly
-│
-├── tests/                       # Test suites — add new ones here
-│   ├── test_smoke.py                      # 30 unit tests (no VPN, runs in CI)
-│   ├── test_isp_domain_availability.py   # 51 geo tests: domain load checks
-│   └── test_isp_subdomain_redirects.py   # 51 geo tests: subdomain redirect checks
-│
-├── conftest.py                  # Fixtures, CLI options, parametrization logic
-├── pytest.ini                   # Pytest configuration
-├── requirements.txt             # Python dependencies
-│
-├── .github/
-│   └── workflows/
-│       └── smoke-tests.yml      # CI: runs smoke tests on every code change
-│
-├── starvpn_config.json          # VPN test schedule (51 rounds across 9 countries)
-├── starvpn_credentials.json     # Your API credentials — NEVER commit this
-├── starvpn_credentials.example.json  # Template for credentials (safe to commit)
-│
-├── tested_domains.txt           # ← EDIT THIS to change which domains are tested
-├── tested_dl_subdomains.txt     # ← EDIT THIS to change which subdomains are tested
-│
-├── test_results.csv             # Output: one row per round (auto-generated)
-├── screenshots/                 # Output: failure/block screenshots (auto-generated)
-└── starvpn_isp_test.log         # Output: full execution log (auto-generated)
+PASSED  test_isp_combined.py::test_isp_combined[BE-Random]
+PASSED  test_isp_combined.py::test_isp_combined[CA-Alberta]
+FAILED  test_isp_combined.py::test_isp_combined[US-New_York]
 ```
-
----
-
-## Test count
-
-With all 51 VPN rounds and the default domain/subdomain lists:
-
-| Test file | Test cases | Requires VPN |
-|-----------|-----------|-------------|
-| `test_smoke.py` | 30 | No |
-| `test_isp_domain_availability.py` | 51 (51 rounds × 1 test) | Yes |
-| `test_isp_subdomain_redirects.py` | 51 (51 rounds × 1 test) | Yes |
-| **Total** | **132** | |
-
-Adding a domain to `tested_domains.txt` or a subdomain to `tested_dl_subdomains.txt` does not change the test count — the extra URLs are tested within each existing round.
-
----
 
 ## Prerequisites
 
 - Python 3.10+
-- Google Chrome installed
-- StarVPN client installed, running, and connected
-- StarVPN API credentials (see setup below)
-
----
+- Google Chrome
+- StarVPN desktop client installed, running, and connected
+- StarVPN API credentials
 
 ## Setup
 
-### 1. Install Python dependencies
+### 1. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure your StarVPN credentials
-
-Copy the example file and fill in your details:
+### 2. Configure StarVPN credentials
 
 ```bash
-# macOS / Linux
-cp starvpn_credentials.example.json starvpn_credentials.json
-
-# Windows
 copy starvpn_credentials.example.json starvpn_credentials.json
 ```
 
@@ -132,135 +110,117 @@ Edit `starvpn_credentials.json`:
 }
 ```
 
-Find your credentials at: https://www.starvpn.com/dashboard/index.php?m=dashboard&page=api
+Credentials are at: https://www.starvpn.com/dashboard/index.php?m=dashboard&page=api
 
 | Field | Where to find it |
 |-------|-----------------|
 | `email` | Your StarVPN account email |
 | `auth_token` | Click "Create Auth Token" on the API dashboard |
 | `custom` | The `username` value in the example payload — usually `1` |
-| `port` | The slot number your account uses — usually `"1"` |
+| `port` | Your account slot number — usually `"1"` |
 | `ip_type` | Usually `"Rotating IP"` |
 
-> ⚠️ `starvpn_credentials.json` is in `.gitignore`. Never commit it. Only `starvpn_credentials.example.json` is safe to commit.
+> ⚠️ `starvpn_credentials.json` is gitignored. Never commit it.
 
 ### 3. Connect StarVPN
 
-Start and connect the StarVPN desktop client before running any geo tests. Verify it is routing traffic correctly:
+Start the StarVPN desktop client and verify it's routing traffic:
 
 ```bash
 curl http://ip-api.com/json/
+# Should show a non-local country
 ```
-
-The response should show a country other than your real location.
-
----
 
 ## Configuring what gets tested
 
 ### Domains (`tested_domains.txt`)
 
-This file controls which marketing/product websites are tested in every geo round. One URL per line.
+One URL per line. Each domain gets its own column in `test_results.csv` automatically. Lines starting with `#` are ignored.
 
-**Current domains:**
 ```
 https://example.com
 https://example.net
 ```
 
-**To add a domain:** append a new line.
-```
-https://newsite.com
-```
+**Pass condition:** page loads without a Chrome network error.
 
-**To remove a domain:** delete its line. Lines starting with `#` are ignored.
-
-Each domain automatically gets its own column in `test_results.csv` — no code changes needed. Adding `https://newsite.com` produces a `newsite.com Status` column on the next run.
-
-**Pass condition:** the page loads without a Chrome network error (`ERR_NAME_NOT_RESOLVED`, `ERR_CONNECTION_REFUSED`, etc.).
-
-**On failure:** a screenshot is saved to `screenshots/` with the filename format `DD-MM-YYYY_Region_Country_IP_domain_FAIL.png`.
-
----
+**On failure:** screenshot saved to `screenshots/DD-MM-YYYY_Region_Country_IP_domain_FAIL.png`.
 
 ### DL Subdomains (`tested_dl_subdomains.txt`)
 
-This file controls which download-redirect subdomains are tested in every geo round. One URL per line.
+One URL per line. Currently 36 entries.
 
-**Current subdomains:** 36 entries (e.g. `download1.example.com` through `download36.example.com`).
+**Pass condition:** subdomain loads and the final URL contains the expected redirect target.
 
-**To add a subdomain:** append a new line.
-```
-https://download37.example.com
-```
+**Changing the redirect target** — edit `core/config.py`:
 
-**To remove a subdomain:** delete its line.
-
-**Pass condition:** the subdomain loads and the final URL contains the expected redirect target (redirect succeeded). A subdomain that returns a Chrome error or redirects elsewhere is reported as BLOCKED.
-
-**On block:** a screenshot is saved to `screenshots/` with the same filename format as domain failures — `DD-MM-YYYY_Region_Country_IP_download1_FAIL.png` (using the subdomain label as the identifier).
-
-**Changing the redirect target:** update `SUBDOMAIN_REDIRECT_TARGET` in `core/config.py`:
 ```python
 SUBDOMAIN_REDIRECT_TARGET = "yourredirecttarget.com"
 ```
 
----
-
-### VPN test schedule (`starvpn_config.json`)
-
-The schedule defines which country, region, and ISP are used in each of the 51 rounds. The current schedule covers:
+### VPN schedule (`starvpn_config.json`)
 
 | Code | Country | Rounds |
 |------|---------|--------|
 | `be` | Belgium | 1 |
-| `ca` | Canada | 4 (AB, BC, ON, QC) |
+| `ca` | Canada | 4 |
 | `fr` | France | 1 |
-| `de` | Germany | 3 (Baden, Bayern, Nordrhein) |
-| `it` | Italy | 3 (Telecom, Vodafone, Wind) |
+| `de` | Germany | 3 |
+| `it` | Italy | 3 |
 | `nl` | Netherlands | 1 |
-| `es` | Spain | 4 (Digi, Orange, Telefonica, Vodafone) |
-| `gb` | United Kingdom | 4 (Scotland BT/Virgin, England Sky/TalkTalk) |
-| `us` | United States | 30 (one per state) |
+| `es` | Spain | 4 |
+| `gb` | United Kingdom | 4 |
+| `us` | United States | 30 |
 | | **Total** | **51** |
 
-Use the `--country` and `--run` CLI flags to run a subset of the schedule without editing this file.
+## Running
 
----
-
-## Running tests
-
-### Quick reference
+### Verify setup first (no VPN needed)
 
 ```bash
-# Verify the framework is set up correctly (no VPN needed):
 pytest tests/test_smoke.py -v
+```
 
-# All domain availability tests across all 51 rounds:
-pytest tests/test_isp_domain_availability.py -v
+All 30 should pass before running geo tests.
 
-# All subdomain redirect tests across all 51 rounds:
-pytest tests/test_isp_subdomain_redirects.py -v
+### Run all 51 rounds
 
-# Run with a visible browser window:
-pytest tests/test_isp_domain_availability.py --show -v
+```bash
+pytest tests/test_isp_combined.py -v
+```
 
-# Filter by country code:
-pytest tests/test_isp_domain_availability.py --country us -v
-pytest tests/test_isp_domain_availability.py --country us gb de -v
+### Filter by country
 
-# Filter by round number (1-based, matches the schedule order):
-pytest tests/test_isp_domain_availability.py --run 1 -v
-pytest tests/test_isp_domain_availability.py --run 18 19 20 21 -v
+```bash
+pytest tests/test_isp_combined.py --country gb -v
+pytest tests/test_isp_combined.py --country us gb de -v
+```
 
-# Filter by test ID name using -k:
-pytest tests/test_isp_domain_availability.py -k "US-New_York" -v
-pytest tests/test_isp_domain_availability.py -k "GB or DE" -v
+Country codes: `be` `ca` `fr` `de` `it` `nl` `es` `gb` `us`
 
-# Run all geo tests (domains + subdomains) across all rounds:
-pytest tests/ -m geo -v
+### Filter by round number (1-based, matches `starvpn_config.json` order)
 
-# Skip all geo tests — CI mode, no VPN needed:
+```bash
+pytest tests/test_isp_combined.py --run 1 -v
+pytest tests/test_isp_combined.py --run 18 19 20 -v
+```
+
+### Filter by location name
+
+```bash
+pytest tests/test_isp_combined.py -k "BE-Random" -v
+pytest tests/test_isp_combined.py -k "GB or DE" -v
+```
+
+### Show the browser window
+
+```bash
+pytest tests/test_isp_combined.py --show -v
+```
+
+### Skip VPN tests (CI mode)
+
+```bash
 pytest -m "not geo" -v
 ```
 
@@ -268,172 +228,257 @@ pytest -m "not geo" -v
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--show` | Show the browser window instead of headless | `--show` |
-| `--country CODE` | Filter to one or more country codes | `--country us gb` |
-| `--run N` | Filter to specific round numbers (1-based) | `--run 3 7 12` |
-
-**Debug a specific location with a visible browser:**
-```bash
-pytest tests/test_isp_domain_availability.py --run 41 --show -v
-# Round 41 = New York, USA
-```
-
-**Rerun only a failed location by name:**
-```bash
-pytest tests/test_isp_domain_availability.py -k "US-New_York" -v
-```
+| `--show` | Show browser instead of headless | `--show` |
+| `--country CODE` | Run only these countries | `--country us gb` |
+| `--run N` | Run specific round numbers | `--run 3 7 12` |
 
 ### Markers
 
 | Marker | Meaning |
 |--------|---------|
-| `@pytest.mark.geo` | Requires a live StarVPN connection. Skip with `-m "not geo"` |
-| `@pytest.mark.smoke` | No VPN or network needed. Always safe to run |
+| `@pytest.mark.geo` | Requires StarVPN. Skip with `-m "not geo"` |
+| `@pytest.mark.smoke` | No VPN or network needed |
 
-### How test IDs are formed
-
-Each parametrized test case is named `COUNTRYCODE-Region_Label`. Examples:
+### Test ID format
 
 | Test ID | Country | Location |
 |---------|---------|----------|
 | `BE-Random` | Belgium | Random region |
 | `CA-British_Columbia` | Canada | BC |
-| `GB-England_Sky` | United Kingdom | England, Sky ISP |
-| `US-New_York` | United States | New York |
-| `IT-Random_(Telecom_Italia)` | Italy | Telecom Italia ISP |
+| `GB-England_Sky` | UK | England, Sky ISP |
+| `US-New_York` | USA | New York |
 
----
+Use these with `-k` to rerun a specific failed location.
 
 ## Output files
 
 | File | Description |
 |------|-------------|
-| `test_results.csv` | One row per round. Columns: Date, Time, ISP, Tested IP, Location, ASN, Blocked DL Subdomains, then one `<domain> Status` column per domain in `tested_domains.txt` |
-| `screenshots/` | PNG screenshots on domain failures and blocked subdomains. Filename: `DD-MM-YYYY_Region_Country_IP_label_FAIL.png` |
-| `starvpn_isp_test.log` | Full execution log with timestamps, retry details, and Chrome error codes |
+| `test_results.csv` | One row per round. Columns: Date, Time, ISP, Tested IP, Location, ASN, Blocked DL Subdomains, then one status column per domain |
+| `screenshots/` | PNG on failures — `DD-MM-YYYY_Region_Country_IP_label_FAIL.png` |
+| `starvpn_isp_test.log` | Full execution log |
 
-All three are in `.gitignore` and will not be committed.
+All three are gitignored.
 
----
+## Resilience
 
-## Resilience and retry behaviour
+**StarVPN API rate limiting** — parses `"Please wait N seconds"` responses, sleeps, and retries automatically.
 
-The framework handles common transient failures automatically — no manual intervention needed.
+**ip-api.com failures** — retries up to 3 times with 5s waits if the response is empty after a VPN switch.
 
-### StarVPN API rate limiting
-The StarVPN API enforces a cooldown between consecutive calls. If it responds with `"Please wait N seconds"`, the framework parses the wait time, sleeps for that duration plus a 2-second buffer, and retries automatically. This appears in the log as:
-```
-INFO  API rate limit — waiting 13s before retry (Please wait 11 seconds)
-INFO  StarVPN API [HTTP 200]: {"result":"success",...}
-```
+**Browser retries** — transient errors trigger a page refresh; all other errors reopen the browser entirely. Up to 3 attempts per URL.
 
-### ip-api.com transient failures
-Immediately after a VPN switch the tunnel sometimes needs a moment to fully establish, causing `ip-api.com` to return an empty response. The framework retries up to 3 times with a 5-second wait between attempts:
-```
-WARNING  ip-api bad JSON (attempt 1/3): Expecting value...
-INFO     Retrying ip-api.com in 5s…
-INFO     IP info — IP: 80.42.61.59  ISP: TalkTalk...
-```
-
-### Browser-level retries
-Each page load has a two-tier retry system. Transient network errors (`ERR_NETWORK_CHANGED`, `ERR_SSL_PROTOCOL_ERROR`) trigger a page refresh within the same browser session. All other errors close the browser and retry with a completely fresh instance. Up to 3 total attempts per URL.
-
-### Stale IP detection
-When `--repeat` is used or the VPN assigns the same IP across consecutive rounds, the framework detects the match and calls `ip_update_now` to force a new IP before proceeding.
+**Stale IP detection** — if the same IP appears across consecutive rounds, `ip_update_now` is called to force a new one.
 
 ---
 
-## CI / GitHub Actions
-
-The workflow in `.github/workflows/smoke-tests.yml` runs automatically on every push or pull request that changes code in `core/`, `pages/`, `tests/`, `conftest.py`, `pytest.ini`, or `requirements.txt`.
-
-It runs the 30 smoke tests which require no VPN or real browser, catching regressions in framework logic on every commit. Full geo tests must be run locally with StarVPN connected.
-
-Changes to non-code files (README, config JSON, domain lists) do not trigger the workflow.
-
-**Viewing results:** go to the **Actions** tab in your GitHub repo after a push. Each run shows pass/fail per test and uploads a JUnit XML report as a downloadable artifact, retained for 14 days.
-
 ---
 
-## Adding a new test suite
+# Suite 2 — Installer Flow Test Suite
 
-1. **Create `tests/test_<your_suite>.py`**
+## How it works
 
-2. **Declare `vpn_entry` as a function argument** — pytest generates one test case per schedule entry automatically, no loop needed:
+For each entry in `lander_urls.txt`, the suite simulates exactly what a real user does:
+
+1. Opens the campaign lander in Chrome with a fresh temporary profile
+2. Finds and clicks the download button
+3. Waits for the thank-you page
+4. Waits 15s, then checks Windows Defender for any new detections and checks if a new `.exe` appeared in Downloads
+5. If a file downloaded cleanly, launches it and waits another 15s before checking Defender again
+6. Checks whether Browser is running (polls for up to 30s)
+7. Records the result and cleans up
+
+All Defender observation is **passive** — the framework never triggers a scan, it only reads what Defender has already logged.
+
+> **Standalone** — `test_installer_flow.py` has no imports from `core/` or `pages/`. It only depends on `pytest`, `selenium`, and `webdriver-manager`.
+
+## Known outcomes
+
+| Result | Meaning |
+|--------|---------|
+| `PASS` | File downloaded, installed cleanly, Browser.exe running |
+| `Chrome Block` | No file appeared in Downloads and Defender shows no flag — Chrome Safe Browsing blocked it |
+| `setup.exe Flagged Trojan:Win32/Suschil!rfn` | Defender flagged the installer file during or after download |
+| `updater.7z Flagged Trojan:Win32/Suschil!rfn` | Defender flagged a component extracted during installation |
+| `Unexpected Behaviour: not detected` | Installer ran without Defender flags but Browser never launched |
+| `Error: <message>` | Unexpected exception during the test |
+
+## Prerequisites
+
+- Windows 10/11
+- Python 3.10+
+- Google Chrome
+- Windows Defender with real-time protection on
+
+## Setup
+
+### 1. Create `lander_urls.txt`
+
+One entry per line in the format `v<version> - <url>`:
+
+```
+v133.0.6943.177 - https://example.com?abc123&gclid=...
+v133.0.6943.200 - https://example.com?def456&gclid=...
+```
+
+The version string becomes the column header in the CSV report. Each URL becomes one test case.
+
+> `lander_urls.txt` is gitignored — never commit campaign URLs.
+
+### 2. Create `thankyoupage_url.txt`
+
+Single line — the URL the lander redirects to after the download button is clicked:
+
+```
+https://example.com/thankyou
+```
+
+> Also gitignored.
+
+## Running
+
+```bash
+# Run all landers
+pytest tests/test_installer_flow.py -v
+
+# Run a single lander
+pytest tests/test_installer_flow.py -k "lander_1" -v
+
+# Short traceback
+pytest tests/test_installer_flow.py -v --tb=short
+```
+
+Landers are numbered in order of appearance in `lander_urls.txt`.
+
+## How the test works step by step
+
+```
+Open lander URL in Chrome (fresh temp profile)
+    ↓
+Find and click download button
+    ↓
+Wait for thank-you page
+    ↓
+Wait 15s
+    ↓
+Check Defender + check Downloads folder
+    ↓
+    ├── Defender flag found         → "<component> Flagged <threat>"   [end]
+    ├── No file in Downloads        → "Chrome Block"                   [end]
+    └── File downloaded, no flag   → Launch installer
+                                        ↓
+                                    Wait 15s
+                                        ↓
+                                    Check Defender
+                                        ↓
+                                    ├── Flag found  → "<component> Flagged <threat>"        [end, skip uninstall]
+                                    └── No flag     → Poll for Browser.exe (up to 30s)
+                                                        ↓
+                                                    ├── Running     → "PASS"
+                                                    └── Not running → "Unexpected Behaviour: not detected"
+                                                        ↓
+                                                    Cleanup
+```
+
+## Download button detection
+
+The script tries the following selectors in order, checking all matching elements on the page for one that is visible and enabled:
 
 ```python
-# tests/test_my_new_suite.py
-import pytest
-
-@pytest.mark.geo
-def test_something(vpn_entry, vpn_client, browser_factory, domain_urls):
-    """One test case per schedule entry — pytest parametrizes automatically."""
-    vpn_client.switch_exit_location(vpn_entry)
-    # ... your assertions here
+"button.downloadBtn"           # exact class match — tried first
+"button.download_link"
+".download_link"
+# XPath: any <a> or <button> whose text contains "download"
+# XPath: any <a> or <button> with "download" in class
+# XPath: any <a> or <button> with "download" in id
+# XPath: any element with href containing ".exe"
+"a[href*='.exe']"
+"a[href*='download']"
+"button.download, .btn-download, #download-btn"
 ```
 
-3. **Available fixtures** (defined in `conftest.py`):
+Each matching element is checked with `is_displayed()` and `is_enabled()`. The element is scrolled into view before clicking.
 
-| Fixture | Scope | What it provides |
-|---------|-------|-----------------|
-| `vpn_entry` | function | One schedule entry — triggers parametrization |
-| `vpn_config` | session | Merged config + credentials dict |
-| `vpn_client` | session | `StarVPNClient` instance |
-| `browser_factory` | session | `BrowserFactory` (headless unless `--show`) |
-| `domain_urls` | session | List of URLs from `tested_domains.txt` |
-| `subdomain_urls` | session | List of URLs from `tested_dl_subdomains.txt` |
-| `schedule` | session | Full filtered schedule list |
-| `ip_info` | function | Fresh ip-api.com response dict |
+## Output — `reports/installer_report.csv`
 
-4. **Add a Page Object** in `pages/` if testing a new type of surface:
+A persistent CSV that accumulates results across runs. New version columns are added automatically.
 
-```python
-# pages/my_page.py
-from core.browser import BasePage, BrowserFactory
-from core.config import PAGE_LOAD_TIMEOUT
+| date | time | 133.0.6943.177 | 133.0.6943.200 | 133.0.6943.201 |
+|------|------|----------------|----------------|----------------|
+| 15-05-2026 | 14:55 | PASS | PASS | Chrome Block |
+| 16-05-2026 | 10:06 | PASS | PASS | Chrome Block |
 
-class MyPage(BasePage):
-    def __init__(self, factory: BrowserFactory, url: str):
-        super().__init__(factory)
-        self.url = url
+The `reports/` directory is gitignored.
 
-    def test(self) -> str:
-        ok, err = self._navigate(self.url, PAGE_LOAD_TIMEOUT)
-        return "PASS" if ok else "FAIL"
-```
+## Cleanup behaviour
 
-5. **Tag geo tests** with `@pytest.mark.geo` so they are excluded in CI automatically.
+After every test (pass or fail):
 
-6. **Add smoke tests** for any new framework logic in `tests/test_smoke.py` — they will run automatically in CI on the next push.
+1. Force-kills: `setup.exe`, `Browser.exe`, `BrowserUpdater.exe`, `Update.exe`
+2. **Tier 1** — Registry uninstall (`HKCU` then `HKLM`) with `--force-uninstall`
+3. **Tier 2** — WMI `Win32_Product` uninstall (fallback)
+4. **Tier 3** — `Get-Package` uninstall (final fallback)
+5. Deletes the downloaded installer file from Downloads
+
+If Defender flagged a component during install, the uninstall steps are skipped (nothing was fully installed).
+
+> The `Software` folder may persist after uninstall — left by the Omaha updater. Does not affect subsequent tests.
 
 ---
 
-## Troubleshooting
+---
+
+# CI / GitHub Actions
+
+`.github/workflows/smoke-tests.yml` runs on every push or pull request touching `core/`, `pages/`, `tests/`, `conftest.py`, `pytest.ini`, or `requirements.txt`.
+
+It runs the 30 smoke tests — no VPN, no real browser, no Windows-specific code — catching regressions in shared framework logic on every commit.
+
+Full geo tests and installer tests must be run locally.
+
+---
+
+# Troubleshooting
+
+## ISP suite
 
 **`starvpn_credentials.json` not found**
 ```bash
 copy starvpn_credentials.example.json starvpn_credentials.json
-# Then edit the file with your credentials
+# Edit with your credentials
 ```
 
-**VPN connectivity check fails at test startup**
-Make sure the StarVPN desktop client is open and connected:
+**VPN connectivity check fails**
+Ensure the StarVPN client is open and connected before running:
 ```bash
 curl http://ip-api.com/json/
-# Should show a non-local country
 ```
 
 **Tests show `[NOTSET]` instead of location names**
-The credentials file is missing or invalid — the schedule could not be loaded during collection. Fix credentials first, then re-run.
+Credentials file missing or invalid — fix credentials and re-run.
 
 **Chrome not found / chromedriver error**
-Install Google Chrome. `webdriver-manager` downloads the matching chromedriver version automatically — no manual installation needed.
+Install Google Chrome. `webdriver-manager` handles chromedriver automatically.
 
-**Tests skip immediately without running**
-Either the credentials or config file is missing, or the `--country`/`--run` filter produced zero rounds. Read the skip message in the output for the specific reason.
+**`[ERROR]` lines in smoke test output**
+Expected — two tests deliberately verify missing-file handling. Both pass.
 
-**`[ERROR]` lines appearing in smoke test output**
-The two error lines in the smoke test output are expected — they are produced by tests that deliberately verify the framework handles missing files gracefully. Both tests pass. This is not a problem.
+## Installer suite
 
-**Same IP across consecutive rounds**
-Detected and handled automatically. The framework calls `ip_update_now` to force a fresh IP and logs a warning if the IP still does not change after the refresh.
+**`lander_urls.txt` not found**
+Create the file with one `v<version> - <url>` entry per line.
+
+**`thankyoupage_url.txt` not found**
+Create the file with the single expected thank-you page URL.
+
+**Download button not found**
+The lander page may use a different button class. Open the lander manually, inspect the download button element, and add its selector to `DOWNLOAD_BUTTON_SELECTORS` at the top of `test_installer_flow.py`.
+
+**`Chrome Block` reported but download should have worked**
+The lander URL may be flagged by Chrome's Safe Browsing database. Open the URL manually in Chrome to confirm. New installer builds may take time to clear Google's reputation system.
+
+**`Unexpected Behaviour: not detected` after what looked like a clean install**
+The installer ran but Browser didn't launch within the 30s poll window. Check whether the install actually completed by looking in `%LOCALAPPDATA%\Software`. May indicate a silent install failure unrelated to Defender.
+
+**Cleanup leaves `Software` folder behind**
+Expected — the Omaha updater leaves this folder even after a successful uninstall. Does not affect subsequent test runs.

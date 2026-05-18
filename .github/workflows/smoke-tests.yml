@@ -30,7 +30,7 @@ jobs:
         uses: browser-actions/setup-chrome@v1
 
       - name: Run smoke tests
-        run: pytest tests/test_smoke.py -v --tb=short --junit-xml=results/smoke.xml
+        run: pytest tests/test_smoke.py -v --tb=short --junit-xml=results/smoke.xml -m "not geo and not installer"
 
       - name: Upload results
         uses: actions/upload-artifact@v4

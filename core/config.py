@@ -114,14 +114,60 @@ def load_url_list(filepath: str, label: str = "URLs") -> list[str]:
     """
     Read non-empty lines from a plain-text URL list file.
     Returns an empty list (not an exception) if the file is missing.
+    Lines starting with # are ignored.
     """
     if not os.path.exists(filepath):
         logger.error("URL list not found: %s", filepath)
         return []
     with open(filepath) as fh:
-        lines = [line.strip() for line in fh if line.strip()]
+        lines = [line.strip() for line in fh
+                 if line.strip() and not line.strip().startswith("#")]
     logger.info("Loaded %d %s from %s", len(lines), label, filepath)
     return lines
+
+
+def load_lander_config(filepath: str) -> list[dict]:
+    """
+    Read lander URLs and their associated version from lander_urls.txt.
+
+    Expected format (one entry per line):
+        v133.0.6943.177 - https://example.com/lander-1
+        v133.0.6943.200 - https://example.com/lander-2
+
+    Returns a list of dicts: [{"version": "133.0.6943.177", "url": "https://..."}]
+    Lines starting with # are ignored.
+    Version prefix "v" is stripped automatically.
+    Returns an empty list if the file is missing or malformed.
+    """
+    if not os.path.exists(filepath):
+        logger.error("Lander config file not found: %s", filepath)
+        return []
+
+    entries = []
+    with open(filepath) as fh:
+        for lineno, raw in enumerate(fh, start=1):
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if " - " not in line:
+                logger.warning(
+                    "%s line %d: expected 'vVERSION - URL' format, got: %r — skipping",
+                    filepath, lineno, line,
+                )
+                continue
+            version_part, url_part = line.split(" - ", 1)
+            version = version_part.strip().lstrip("v").lstrip("V")
+            url = url_part.strip()
+            if not version or not url:
+                logger.warning(
+                    "%s line %d: empty version or URL — skipping",
+                    filepath, lineno,
+                )
+                continue
+            entries.append({"version": version, "url": url})
+
+    logger.info("Loaded %d lander entries from %s", len(entries), filepath)
+    return entries
 
 
 def filter_schedule(
@@ -144,3 +190,35 @@ def filter_schedule(
         codes = {c.lower() for c in country_codes}
         return [e for e in schedule if e["country"].lower() in codes]
     return schedule
+
+# ---------------------------------------------------------------------------
+# Installer test suite
+# ---------------------------------------------------------------------------
+LANDER_URLS_FILE        = "lander_urls.txt"
+THANKYOU_URL_FILE       = "thankyoupage_url.txt"
+DOWNLOADS_DIR           = os.path.join(os.path.expandvars("%USERPROFILE%"), "Downloads")
+LOCALAPPDATA_DIR        = os.path.expandvars("%LOCALAPPDATA%")
+PULSE_SOFTWARE_DIR      = os.path.join(LOCALAPPDATA_DIR, "PulseSoftware")
+
+# Expected folders after a successful install
+EXPECTED_INSTALL_FOLDERS = [
+    "PulseBrowser",
+    "PulseBrowserUpdater",
+    "Update",
+]
+
+# Expected program name in installed apps registry
+INSTALLED_PROGRAM_NAME  = "Pulse Browser"
+
+# Omaha/Google-style uninstaller — Pulse Browser uses the same pattern
+UNINSTALL_REG_PATHS = [
+    r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+    r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+]
+
+# Timeouts for installer flow (seconds)
+DOWNLOAD_WAIT           = 60   # max wait for file to appear in Downloads
+THANKYOU_PAGE_TIMEOUT   = 30   # max wait for thank-you page to load
+INSTALL_WAIT            = 60   # max wait for PulseBrowser.exe to launch
+POST_RUN_DEFENDER_WAIT  = 5    # wait after launch before defender check
+LANDER_LOAD_TIMEOUT     = 30   # page load timeout for campaign lander

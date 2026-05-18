@@ -70,6 +70,10 @@ def pytest_configure(config):
         "markers",
         "smoke: fast, no-VPN tests — safe to run in CI without StarVPN",
     )
+    config.addinivalue_line(
+        "markers",
+        "installer: Windows-only installer flow tests — requires local machine, no VPN needed",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -213,6 +217,31 @@ def schedule(vpn_config, request):
         pytest.skip("No matching rounds found for the given --country / --run filter")
     return filtered
 
+# ---------------------------------------------------------------------------
+# Installer suite fixtures (session-scoped)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session")
+def lander_urls():
+    """Load campaign lander entries from lander_urls.txt. Skips if file is empty."""
+    from core.config import LANDER_URLS_FILE, load_lander_config
+    entries = load_lander_config(LANDER_URLS_FILE)
+    if not entries:
+        pytest.skip(f"{LANDER_URLS_FILE} is missing or empty")
+    return entries
+
+
+@pytest.fixture(scope="session")
+def thankyou_url():
+    """
+    Load the single shared thank-you page URL from thankyoupage_url.txt.
+    Skips if the file is missing or empty.
+    """
+    from core.config import THANKYOU_URL_FILE
+    urls = load_url_list(THANKYOU_URL_FILE, "thank-you URL")
+    if not urls:
+        pytest.skip(f"{THANKYOU_URL_FILE} is missing or empty")
+    return urls[0].strip()
 
 # ---------------------------------------------------------------------------
 # Function-scoped fixtures

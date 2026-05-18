@@ -63,11 +63,24 @@ class DomainPage(BasePage):
     # ------------------------------------------------------------------
 
     def _capture_screenshot(self, ip_info: dict, date_str: str) -> None:
-        """Open a fresh browser, load the page, save a screenshot."""
+        """
+        Open a fresh browser, navigate to the URL, and save a screenshot
+        of whatever the browser shows — including Chrome error pages.
+
+        The get() call is wrapped separately so a TimeoutException or
+        network error does not prevent the screenshot from being taken.
+        The error page itself (ERR_NAME_NOT_RESOLVED etc.) is exactly
+        what we want to capture.
+        """
         drv = tmp = None
         try:
             drv, tmp = self._factory.create()
-            drv.get(self.url)
+            try:
+                drv.get(self.url)
+            except Exception:
+                # Navigation failed — but the browser window still shows
+                # the Chrome error page, which is what we want to capture.
+                pass
             os.makedirs(SCREENSHOT_DIR, exist_ok=True)
             save_screenshot(drv, self._shot_label, ip_info, date_str)
         except Exception as exc:
