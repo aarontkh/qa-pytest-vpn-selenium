@@ -31,3 +31,8 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+# Installer test suite outputs
+reports/
+lander_urls.txt
+thankyoupage_url.txt
