@@ -102,6 +102,12 @@ def pytest_addoption(parser):
         default=None,
         help="Run specific round numbers (1-based), e.g. --run 1 5 10",
     )
+    parser.addoption(
+        "--browser",
+        default="chrome",
+        choices=["chrome", "edge"],
+        help="Browser for installer flow tests (default: chrome)",
+    )
 
 
 # ---------------------------------------------------------------------------

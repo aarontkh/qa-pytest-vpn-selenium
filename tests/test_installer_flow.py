@@ -3,33 +3,41 @@ tests/test_installer_flow.py
 ============================
 Simple installer flow test — one test per lander URL in lander_urls.txt.
 
+Standalone — no imports from core/ or pages/.
+
+Dependencies (all from requirements.txt):
+  - pytest
+  - selenium
+  - webdriver-manager
+
 Steps per test
 --------------
 1.  Parse version from lander_urls.txt entry
-2.  Open the lander URL in Chrome
+2.  Open the lander URL in Chrome (or Edge)
 3.  Click the download button
 4.  Wait for the thank-you page
 5.  Assume download starts automatically
 6.  Wait 15s, then check Defender for new flags since test start
 7.  Determine outcome:
-      - No flag + no new file  → Chrome Block
-      - Flag detected          → "<component> Flagged <threat>"  (test ends)
+      - No flag + no new file  → "Chrome Block"
+      - Flag detected          → "<component> Flagged <threat>"
       - No flag + new file     → run the installer
 8.  Wait 15s after launching installer, check Defender again
-9.  Flag detected              → "<component> Flagged <threat>"  (test ends, kill installer)
+9.  Flag detected              → "<component> Flagged <threat>"  (skip uninstall)
     No flag, pulse not running → "Unexpected Behaviour: Pulse not detected"
     No flag, pulse running     → "PASS"
 10. Cleanup: kill processes → uninstall → delete file
 
 lander_urls.txt format
 -----------------------
-    v133.0.6943.177 - https://browsergo.com?abc&gclid=...
-    v133.0.6943.200 - https://browsergo.com?def&gclid=...
+    v133.0.6943.177 - https://example.com?abc&gclid=...
+    v133.0.6943.200 - https://example.com?def&gclid=...
 
 Running
 -------
     pytest tests/test_installer_flow.py -v
     pytest tests/test_installer_flow.py -k "lander_1" -v
+    pytest tests/test_installer_flow.py --browser edge -v
 """
 
 import csv
@@ -45,8 +53,10 @@ from datetime import datetime
 
 import pytest
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.edge.options import Options as EdgeOptions
+from selenium.webdriver.edge.service import Service as EdgeService
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
@@ -64,7 +74,7 @@ REPORT_FILE       = os.path.join(REPORT_DIR, "installer_report.csv")
 
 DEFENDER_WAIT     = 15  # seconds to wait before each Defender check
 THANKYOU_TIMEOUT  = 30  # seconds to wait for thank-you page
-PULSE_WAIT        = 30  # seconds to poll for PulseBrowser.exe after clean install
+PULSE_WAIT        = 30  # seconds to poll for Browser.exe after clean install
 
 PULSE_EXE         = "PulseBrowser.exe"
 INSTALLER_PROGRAM = "Pulse Browser"
@@ -124,34 +134,80 @@ def pytest_generate_tests(metafunc):
 
 
 # ---------------------------------------------------------------------------
-# Chrome driver
+# Chrome / Edge driver
 # ---------------------------------------------------------------------------
 
-def _make_driver() -> tuple[webdriver.Chrome, str]:
-    """Return (driver, temp_profile_dir). Caller must delete temp_profile_dir."""
+def _find_msedgedriver() -> str | None:
+    """
+    Locate msedgedriver.exe on Windows without downloading anything.
+    Edge ships its own WebDriver alongside the browser binary.
+    Checks the standard installation paths in order.
+    Returns the full path if found, None otherwise (Selenium will search PATH).
+    """
+    candidates = [
+        # Program Files — standard install
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedgedriver.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedgedriver.exe",
+        # Per-user install
+        os.path.join(os.path.expandvars("%LOCALAPPDATA%"),
+                     r"Microsoft\Edge\Application\msedgedriver.exe"),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            logger.info("Found msedgedriver: %s", path)
+            return path
+    logger.info("msedgedriver not found in standard locations — relying on PATH")
+    return None
+
+
+def _make_driver(browser: str = "chrome") -> tuple[webdriver.Chrome | webdriver.Edge, str]:
+    """
+    Return (driver, temp_profile_dir) for the requested browser.
+    Caller must delete temp_profile_dir after use.
+    Supports: "chrome", "edge"
+    """
     tmp_dir = tempfile.mkdtemp(prefix="lander_test_")
-    opts = Options()
-    opts.add_argument(f"--user-data-dir={tmp_dir}")
-    opts.add_argument("--no-sandbox")
-    opts.add_argument("--disable-dev-shm-usage")
-    opts.add_argument("--disable-gpu")
-    opts.add_argument("--window-size=1920,1080")
-    opts.add_argument("--disable-extensions")
-    opts.add_argument("--no-first-run")
-    opts.add_argument("--no-default-browser-check")
-    opts.add_experimental_option("prefs", {
+
+    common_args = [
+        f"--user-data-dir={tmp_dir}",
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--window-size=1920,1080",
+        "--disable-extensions",
+        "--no-first-run",
+        "--no-default-browser-check",
+    ]
+    download_prefs = {
         "download.default_directory": DOWNLOADS_DIR,
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
         "safebrowsing.enabled": True,
-    })
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=opts)
+    }
+
+    if browser == "edge":
+        opts = EdgeOptions()
+        for arg in common_args:
+            opts.add_argument(arg)
+        opts.add_experimental_option("prefs", download_prefs)
+        # Edge ships msedgedriver.exe alongside the browser — no download needed.
+        edge_driver_path = _find_msedgedriver()
+        service = EdgeService(edge_driver_path) if edge_driver_path else EdgeService()
+        driver = webdriver.Edge(service=service, options=opts)
+    else:
+        opts = ChromeOptions()
+        for arg in common_args:
+            opts.add_argument(arg)
+        opts.add_experimental_option("prefs", download_prefs)
+        service = ChromeService(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=opts)
+
     driver.set_page_load_timeout(30)
+    logger.info("Browser: %s", browser)
     return driver, tmp_dir
 
 
-def _clear_browser_data(driver: webdriver.Chrome) -> None:
+def _clear_browser_data(driver: webdriver.Chrome | webdriver.Edge) -> None:
     """Clear cookies, cache, and storage via CDP."""
     try:
         driver.execute_cdp_cmd("Network.clearBrowserCookies", {})
@@ -171,7 +227,7 @@ def _clear_browser_data(driver: webdriver.Chrome) -> None:
         logger.debug("CDP clear skipped: %s", exc)
 
 
-def _find_and_click_download(driver: webdriver.Chrome) -> bool:
+def _find_and_click_download(driver: webdriver.Chrome | webdriver.Edge) -> bool:
     """
     Try each selector in DOWNLOAD_BUTTON_SELECTORS in order.
     For each selector, check all matching elements for one that is
@@ -195,7 +251,8 @@ def _find_and_click_download(driver: webdriver.Chrome) -> bool:
     return False
 
 
-def _wait_for_thankyou(driver: webdriver.Chrome, original_url: str, timeout: int = 30) -> str:
+def _wait_for_thankyou(driver: webdriver.Chrome | webdriver.Edge,
+                        original_url: str, timeout: int = 30) -> str:
     """
     Poll until the URL changes from *original_url*.
     Returns the new URL, or the current URL if timeout is reached.
@@ -396,7 +453,8 @@ def _uninstall_tier1() -> bool:
                                         if "--force-uninstall" not in str(cmd):
                                             cmd = str(cmd) + " --force-uninstall"
                                         logger.info("Tier 1 uninstall (%s): %s", hive_name, cmd)
-                                        subprocess.run(cmd, shell=True, timeout=60, capture_output=True)
+                                        subprocess.run(cmd, shell=True, timeout=60,
+                                                       capture_output=True)
                                         time.sleep(5)
                                         return True
                                 except FileNotFoundError:
@@ -502,13 +560,14 @@ def _write_report(version: str, result: str) -> None:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.installer
-def test_installer_flow(lander_entry):
+def test_installer_flow(lander_entry, request):
     version  = lander_entry["version"]
     url      = lander_entry["url"]
     thankyou = _load_thankyou_url()
+    browser  = request.config.getoption("--browser", default="chrome")
 
     logger.info("=" * 60)
-    logger.info("Test Run: v%s", version)
+    logger.info("Test Run: v%s  [%s]", version, browser)
     logger.info("URL: %s", url)
     logger.info("=" * 60)
 
@@ -522,7 +581,7 @@ def test_installer_flow(lander_entry):
         # ------------------------------------------------------------------
         # Steps 2–4: Open lander, click download button
         # ------------------------------------------------------------------
-        driver, tmp_dir = _make_driver()
+        driver, tmp_dir = _make_driver(browser)
         logger.info("Opening lander: %s", url)
         driver.get(url)
         time.sleep(3)  # let page JS settle before searching for button
@@ -557,7 +616,7 @@ def test_installer_flow(lander_entry):
 
         if new_file is None:
             result = "Chrome Block"
-            logger.warning("No file in Downloads — Chrome blocked the download")
+            logger.warning("No file in Downloads — browser blocked the download")
             _write_report(version, result)
             return
 
@@ -590,7 +649,7 @@ def test_installer_flow(lander_entry):
             logger.warning(result)
         else:
             result = "PASS"
-            logger.info("PASS — PulseBrowser.exe is running")
+            logger.info("PASS — %s is running", PULSE_EXE)
 
         _write_report(version, result)
 
