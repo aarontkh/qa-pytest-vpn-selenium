@@ -1,5 +1,4 @@
 # qa_pytest_vpn_selenium
-> *Original script version: [StarVPN-Selenium-ISP-Test-Automation](https://github.com/aarontkh/StarVPN-Selenium-ISP-Test-Automation)*
 
 A pytest-based QA automation framework with two independent test suites:
 
@@ -307,7 +306,7 @@ All Defender observation is **passive** — the framework never triggers a scan,
 
 - Windows 10/11
 - Python 3.10+
-- Google Chrome
+- Google Chrome and/or Microsoft Edge
 - Windows Defender with real-time protection on
 
 ## Setup
@@ -338,22 +337,37 @@ https://example.com/thankyou
 ## Running
 
 ```bash
-# Run all landers
+# Run all landers (Chrome, default)
 pytest tests/test_installer_flow.py -v
+
+# Run all landers with Edge
+pytest tests/test_installer_flow.py --browser edge -v
 
 # Run a single lander
 pytest tests/test_installer_flow.py -k "lander_1" -v
 
+# Run a single lander with Edge
+pytest tests/test_installer_flow.py -k "lander_1" --browser edge -v
+
 # Short traceback
 pytest tests/test_installer_flow.py -v --tb=short
 ```
+
+### CLI options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--browser chrome` | Use Google Chrome | ✓ default |
+| `--browser edge` | Use Microsoft Edge | |
+
+**Edge note:** Edge ships `msedgedriver.exe` alongside the browser binary — no internet download required. The script finds it automatically in the standard install locations (`Program Files\Microsoft\Edge\Application\` or `%LOCALAPPDATA%\Microsoft\Edge\Application\`).
 
 Landers are numbered in order of appearance in `lander_urls.txt`.
 
 ## How the test works step by step
 
 ```
-Open lander URL in Chrome (fresh temp profile)
+Open lander URL in Chrome or Edge (fresh temp profile)
     ↓
 Find and click download button
     ↓
@@ -475,7 +489,10 @@ Create the file with the single expected thank-you page URL.
 The lander page may use a different button class. Open the lander manually, inspect the download button element, and add its selector to `DOWNLOAD_BUTTON_SELECTORS` at the top of `test_installer_flow.py`.
 
 **`Chrome Block` reported but download should have worked**
-The lander URL may be flagged by Chrome's Safe Browsing database. Open the URL manually in Chrome to confirm. New installer builds may take time to clear Google's reputation system.
+The lander URL may be flagged by the browser's Safe Browsing database. Open the URL manually to confirm. New installer builds may take time to clear Google's or Microsoft's reputation system.
+
+**Edge: `msedgedriver not found` or driver error**
+The script looks for `msedgedriver.exe` in `Program Files\Microsoft\Edge\Application\` and `%LOCALAPPDATA%\Microsoft\Edge\Application\`. If Edge is installed in a non-standard location, add `msedgedriver.exe` to your `PATH` manually.
 
 **`Unexpected Behaviour: not detected` after what looked like a clean install**
 The installer ran but Browser didn't launch within the 30s poll window. Check whether the install actually completed by looking in `%LOCALAPPDATA%\Software`. May indicate a silent install failure unrelated to Defender.
